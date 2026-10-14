@@ -185,7 +185,10 @@
 
     <div>
       <button class="export-btn" id="export-pdf" data-i18n="exportPdfBtn"></button>
+      <button class="export-btn" id="export-excel" data-i18n="exportExcelBtn" style="margin-left:8px;"></button>
       <div class="export-hint" data-i18n="exportHint"></div>
+      <div class="export-hint" id="history-counter" style="margin-top:4px;"></div>
+      <div class="export-hint"><button class="reset-link" id="clear-history" data-i18n="clearHistoryBtn"></button></div>
     </div>
   </div>
 
@@ -245,7 +248,9 @@ const STR = {
     protocolResultsHeading: 'Kılavuzlara göre değerlendirme',
     protocolCombinedHeading: 'Birleşik öneri',
     protocolFooterNote: 'Bu protokol, yukarıdaki girdilerle bu araç tarafından otomatik olarak üretilmiştir; resmi bir tıbbi kayıt değildir ve yalnızca test/doğrulama amaçlı kullanılmalıdır.',
-    notEntered: '—'
+    notEntered: '—',
+    exportExcelBtn: 'Tüm kayıtları Excel\'e aktar (.csv)',
+    clearHistoryBtn: 'Yerel test geçmişini temizle'
   },
   en: {
     title: 'Febrile Infant Selective LP Calculator',
@@ -288,7 +293,9 @@ const STR = {
     protocolResultsHeading: 'Assessment by guideline',
     protocolCombinedHeading: 'Combined recommendation',
     protocolFooterNote: 'This protocol was generated automatically by this tool from the inputs above; it is not an official medical record and should be used for testing/verification purposes only.',
-    notEntered: '—'
+    notEntered: '—',
+    exportExcelBtn: 'Export all records to Excel (.csv)',
+    clearHistoryBtn: 'Clear local test history'
   }
 };
 
@@ -389,7 +396,7 @@ const VERDICT_MSG = {
 
 // Bump this string with every clinically or functionally meaningful change,
 // so a printed/exported protocol always shows exactly which version produced it.
-const TOOL_VERSION = 'v1.2 (2026-10-14) — TR/EN, sınır değeri (60/90 gün) düzeltmeleri, PDF protokol kaydı';
+const TOOL_VERSION = 'v1.3 (2026-10-14) — TR/EN, sınır değeri (60/90 gün) düzeltmeleri, PDF protokol kaydı, yerel test geçmişi + Excel (.csv) dışa aktarım';
 
 let lang = 'tr';
 let state = { appearance:null, term:null };
@@ -416,6 +423,7 @@ $('lang-toggle').querySelectorAll('button').forEach(btn=>{
     lang = btn.dataset.lang;
     applyStaticStrings();
     compute();
+    updateHistoryCounter();
   });
 });
 
@@ -451,9 +459,10 @@ function num(id){
   return v === '' ? null : parseFloat(v);
 }
 
-function card(container, cls, name, verdict, why, oos){
+function card(container, cls, name, verdict, why, oos, key){
   const d = document.createElement('div');
   d.className = 'res-card ' + cls + (oos ? ' oos' : '');
+  if (key) d.dataset.key = key;
   d.innerHTML = `<div class="name">${name}</div><div class="verdict">${verdict}</div><div class="why">${why}</div>`;
   container.appendChild(d);
 }
@@ -462,7 +471,7 @@ function card(container, cls, name, verdict, why, oos){
 // as opposed to a plain gray "data missing" card (applicable guideline, just needs more inputs).
 function cardM(container, cls, nameKey, msgKey, oos){
   const m = MSG[msgKey][lang];
-  card(container, cls, NAMES[nameKey], m.verdict, m.why, !!oos);
+  card(container, cls, NAMES[nameKey], m.verdict, m.why, !!oos, nameKey);
 }
 
 function setBanner(key, colorOverride){
@@ -493,7 +502,12 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-function buildProtocol(){
+// Single source of truth for "what is this test case, right now" — used by the
+// PDF protocol, the local history log, and the Excel/CSV export alike, so the
+// three can never silently drift out of sync with each other.
+const GUIDELINE_KEYS = ['aap','pecarn','nice','cps','step','tnd'];
+
+function collectRecord(){
   const s = STR[lang];
   const { human, id } = nowStamp();
 
@@ -502,36 +516,60 @@ function buildProtocol(){
   const urineVal = $('urine').value;
   const urineTxt = urineVal==='neg' ? s.urineNeg : urineVal==='pos' ? s.urinePos : s.urineUnknown;
 
-  const inputRows = [
-    [s.ageLabel, fieldOrDash($('age').value)],
-    [s.appearanceLabel, appearanceTxt],
-    [s.termLabel, termTxt],
-    [s.urineLabel, urineTxt],
-    [s.pctLabel, fieldOrDash($('pct').value)],
-    [s.crpLabel, fieldOrDash($('crp').value)],
-    [s.ancLabel, fieldOrDash($('anc').value)],
-    [s.wbcLabel, fieldOrDash($('wbc').value)],
-    [s.tempLabel, fieldOrDash($('temp').value)],
-  ];
+  const inputs = {
+    age: fieldOrDash($('age').value),
+    appearance: appearanceTxt,
+    term: termTxt,
+    urine: urineTxt,
+    pct: fieldOrDash($('pct').value),
+    crp: fieldOrDash($('crp').value),
+    anc: fieldOrDash($('anc').value),
+    wbc: fieldOrDash($('wbc').value),
+    temp: fieldOrDash($('temp').value)
+  };
 
-  const resultRows = Array.from($('res-grid').querySelectorAll('.res-card')).map(c => ({
-    name: c.querySelector('.name').textContent,
-    verdict: c.querySelector('.verdict').textContent,
-    why: c.querySelector('.why').textContent
-  }));
+  const cardsByKey = {};
+  $('res-grid').querySelectorAll('.res-card').forEach(c=>{
+    cardsByKey[c.dataset.key] = {
+      name: c.querySelector('.name').textContent,
+      verdict: c.querySelector('.verdict').textContent,
+      why: c.querySelector('.why').textContent
+    };
+  });
+  const results = GUIDELINE_KEYS.map(k => cardsByKey[k] || { name: NAMES[k], verdict: '', why: '' });
 
-  const combinedBig = $('verdict-big').textContent;
-  const combinedSmall = $('verdict-small').textContent;
+  return {
+    protocolNo: `LP-${id}`,
+    timeHuman: human,
+    lang,
+    version: TOOL_VERSION,
+    inputs,
+    results,
+    combinedBig: $('verdict-big').textContent,
+    combinedSmall: $('verdict-small').textContent
+  };
+}
+
+function buildProtocol(rec){
+  const s = STR[lang];
   const disclaimerPlain = $('disclaimer').textContent.trim();
+
+  const inputRows = [
+    [s.ageLabel, rec.inputs.age], [s.appearanceLabel, rec.inputs.appearance],
+    [s.termLabel, rec.inputs.term], [s.urineLabel, rec.inputs.urine],
+    [s.pctLabel, rec.inputs.pct], [s.crpLabel, rec.inputs.crp],
+    [s.ancLabel, rec.inputs.anc], [s.wbcLabel, rec.inputs.wbc],
+    [s.tempLabel, rec.inputs.temp],
+  ];
 
   let html = '';
   html += `<h1>${escapeHtml(s.title)}</h1>`;
   html += `<div class="pp-meta">`;
   html += `<div><b>${escapeHtml(s.protocolTitle)}</b></div>`;
-  html += `<div>${escapeHtml(s.protocolNoLabel)}: LP-${id}</div>`;
-  html += `<div>${escapeHtml(s.protocolTimeLabel)}: ${human} (local)</div>`;
-  html += `<div>${escapeHtml(s.protocolVersionLabel)}: ${escapeHtml(TOOL_VERSION)}</div>`;
-  html += `<div>${escapeHtml(s.protocolLangLabel)}: ${lang.toUpperCase()}</div>`;
+  html += `<div>${escapeHtml(s.protocolNoLabel)}: ${rec.protocolNo}</div>`;
+  html += `<div>${escapeHtml(s.protocolTimeLabel)}: ${rec.timeHuman} (local)</div>`;
+  html += `<div>${escapeHtml(s.protocolVersionLabel)}: ${escapeHtml(rec.version)}</div>`;
+  html += `<div>${escapeHtml(s.protocolLangLabel)}: ${rec.lang.toUpperCase()}</div>`;
   html += `</div>`;
 
   html += `<h2>${escapeHtml(s.protocolInputsHeading)}</h2>`;
@@ -540,17 +578,81 @@ function buildProtocol(){
   html += `</tbody></table>`;
 
   html += `<h2>${escapeHtml(s.protocolResultsHeading)}</h2>`;
-  resultRows.forEach(r => {
+  rec.results.forEach(r => {
     html += `<div class="pp-card"><div class="pp-name">${escapeHtml(r.name)} — <span>${escapeHtml(r.verdict)}</span></div><div class="pp-why">${escapeHtml(r.why)}</div></div>`;
   });
 
   html += `<h2>${escapeHtml(s.protocolCombinedHeading)}</h2>`;
-  html += `<div class="pp-combined"><div class="pp-combined-big">${escapeHtml(combinedBig)}</div><div class="pp-combined-small">${escapeHtml(combinedSmall)}</div></div>`;
+  html += `<div class="pp-combined"><div class="pp-combined-big">${escapeHtml(rec.combinedBig)}</div><div class="pp-combined-small">${escapeHtml(rec.combinedSmall)}</div></div>`;
 
   html += `<p class="pp-disclaimer">${escapeHtml(disclaimerPlain)}</p>`;
   html += `<p class="pp-footnote">${escapeHtml(s.protocolFooterNote)}</p>`;
 
   $('print-protocol').innerHTML = html;
+}
+
+/* ---- local history (this browser only) ---- */
+const HISTORY_KEY = 'lpCalcHistoryV1';
+
+function loadHistory(){
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch(e){ return []; }
+}
+function saveHistoryArr(arr){
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); } catch(e){ /* storage unavailable — ignore */ }
+}
+function appendCurrentToHistory(rec){
+  const arr = loadHistory();
+  arr.push(rec);
+  saveHistoryArr(arr);
+  updateHistoryCounter();
+}
+function updateHistoryCounter(){
+  const n = loadHistory().length;
+  const el = $('history-counter');
+  if (el) el.textContent = (lang==='tr' ? `Yerelde kayıtlı test sayısı: ${n}` : `Tests saved locally: ${n}`);
+}
+
+/* ---- CSV (Excel-compatible) export of the full local history ---- */
+function csvEscape(v){
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadBlob(filename, content, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function exportHistoryAsCsv(){
+  const s = STR[lang];
+  const history = loadHistory();
+  if (history.length === 0){
+    alert(lang==='tr' ? 'Henüz kaydedilmiş bir test yok.' : 'No saved tests yet.');
+    return;
+  }
+  const header = [
+    s.protocolNoLabel, s.protocolTimeLabel, s.protocolLangLabel, s.protocolVersionLabel,
+    s.ageLabel, s.appearanceLabel, s.termLabel, s.urineLabel,
+    s.pctLabel, s.crpLabel, s.ancLabel, s.wbcLabel, s.tempLabel,
+    ...GUIDELINE_KEYS.map(k => NAMES[k]),
+    s.protocolCombinedHeading, (lang==='tr' ? 'Birleşik Öneri Açıklaması' : 'Combined Recommendation Detail'),
+    (lang==='tr' ? 'Tüm Gerekçeler' : 'All Rationales')
+  ];
+  const rows = history.map(rec => {
+    const allRationales = rec.results.map(r => `${r.name}: ${r.verdict} — ${r.why}`).join(' | ');
+    return [
+      rec.protocolNo, rec.timeHuman, rec.lang.toUpperCase(), rec.version,
+      rec.inputs.age, rec.inputs.appearance, rec.inputs.term, rec.inputs.urine,
+      rec.inputs.pct, rec.inputs.crp, rec.inputs.anc, rec.inputs.wbc, rec.inputs.temp,
+      ...rec.results.map(r => r.verdict),
+      rec.combinedBig, rec.combinedSmall, allRationales
+    ];
+  });
+  const csv = '﻿' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+  downloadBlob('lp_hesaplayici_test_kayitlari.csv', csv, 'text/csv;charset=utf-8');
 }
 
 $('export-pdf').addEventListener('click', ()=>{
@@ -559,9 +661,31 @@ $('export-pdf').addEventListener('click', ()=>{
     alert(STR[lang].exportNeedsInput);
     return;
   }
-  buildProtocol();
+  const rec = collectRecord();
+  buildProtocol(rec);
+  appendCurrentToHistory(rec);
   window.print();
 });
+
+$('export-excel').addEventListener('click', ()=>{
+  const age = num('age');
+  if (age !== null && state.appearance !== null){
+    appendCurrentToHistory(collectRecord());
+  }
+  exportHistoryAsCsv();
+});
+
+$('clear-history').addEventListener('click', ()=>{
+  const msg = lang==='tr'
+    ? 'Bu tarayıcıda yerel olarak kayıtlı tüm test geçmişi silinecek. Emin misin?'
+    : 'This will delete all locally saved test history on this browser. Are you sure?';
+  if (confirm(msg)){
+    saveHistoryArr([]);
+    updateHistoryCounter();
+  }
+});
+
+updateHistoryCounter();
 
 function compute(){
   const grid = $('res-grid');
