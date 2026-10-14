@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ateşli İnfantta Seçici LP Hesaplayıcı</title>
+<title>Ateşli İnfantta Seçici LP Hesaplayıcı / Febrile Infant Selective LP Calculator</title>
 <style>
   :root{
     --navy:#282930; --blue:#405C80; --bg:#F4F4F6;
@@ -16,9 +16,16 @@
   body{
     margin:0; font-family:'Liberation Sans','Arial',sans-serif; background:var(--bg); color:#1b1c21;
   }
-  header{ background:var(--navy); color:#fff; padding:22px 20px 18px; }
-  header h1{ font-size:clamp(20px,4vw,30px); font-weight:700; max-width:980px; margin:0 auto; }
-  header p{ font-size:14px; color:#C7CAD3; margin:6px auto 0; max-width:980px; }
+  header{ background:var(--navy); color:#fff; padding:22px 20px 18px; position:relative; }
+  .header-inner{ max-width:980px; margin:0 auto; position:relative; }
+  header h1{ font-size:clamp(20px,4vw,30px); font-weight:700; margin:0; padding-right:110px; }
+  header p{ font-size:14px; color:#C7CAD3; margin:6px 0 0; padding-right:110px; }
+  .lang-toggle{ position:absolute; top:0; right:0; display:flex; border:1.5px solid #565761; border-radius:8px; overflow:hidden; }
+  .lang-toggle button{
+    font-family:inherit; font-size:13px; font-weight:700; padding:7px 12px; border:none; cursor:pointer;
+    background:transparent; color:#C7CAD3;
+  }
+  .lang-toggle button.active{ background:#fff; color:var(--navy); }
   .wrap{ max-width:980px; margin:0 auto; padding:18px 16px 60px; }
   .disclaimer{
     background:#FCEACB; border:1px solid #e8c073; color:#7a5200; border-radius:10px;
@@ -61,96 +68,285 @@
   footer{ max-width:980px; margin:30px auto 0; padding:0 16px; font-size:11.5px; color:#505563; line-height:1.6; }
   footer .author{ font-weight:700; color:var(--navy); margin-bottom:4px; }
   .reset-link{ background:none; border:none; color:var(--blue); font-size:13px; font-weight:700; cursor:pointer; padding:0; text-decoration:underline; }
+  @media (max-width:520px){
+    header h1, header p{ padding-right:0; }
+    .lang-toggle{ position:static; display:inline-flex; margin-top:10px; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Ateşli İnfantta Seçici LP Hesaplayıcı</h1>
-  <p>5. Trakya Acil Tıp Günleri — "Ateşli İnfantların Tümüne Lomber Ponksiyon Yapılmalı mı?" atışmasının eşlikçi aracı</p>
+  <div class="header-inner">
+    <div class="lang-toggle" id="lang-toggle">
+      <button data-lang="tr" class="active">TR</button>
+      <button data-lang="en">EN</button>
+    </div>
+    <h1 data-i18n="title"></h1>
+    <p data-i18n="subtitle"></p>
+  </div>
 </header>
 
 <div class="wrap">
 
-  <div class="disclaimer">
-    <b>Not:</b> Bu araç yalnızca eğitim ve kongre sunumu amaçlıdır. Resmi, doğrulanmış bir klinik karar destek sistemi değildir, hiçbir kılavuzun yerine geçmez. Nihai LP kararı daima hekimin klinik değerlendirmesine, kurumsal olanaklara ve güvenilir izlem koşullarına bağlıdır.
-  </div>
+  <div class="disclaimer" id="disclaimer"></div>
 
   <div class="card">
-    <h2>Hasta bilgileri</h2>
+    <h2 data-i18n="patientInfo"></h2>
     <div class="grid">
       <div>
-        <label>Yaş (gün)<span class="hint">0–90 gün arası</span></label>
-        <input type="number" id="age" min="0" max="90" placeholder="örn. 35">
+        <label data-i18n="ageLabel"></label><span class="hint" data-i18n="ageHint"></span>
+        <input type="number" id="age" min="0" max="90">
       </div>
       <div>
-        <label>Klinik görünüm</label>
+        <label data-i18n="appearanceLabel"></label>
         <div class="seg" id="seg-appearance">
-          <button data-val="good" class="good">İyi görünümlü</button>
-          <button data-val="bad" class="bad">Kötü görünümlü</button>
+          <button data-val="good" class="good" data-i18n="appearanceGood"></button>
+          <button data-val="bad" class="bad" data-i18n="appearanceBad"></button>
         </div>
       </div>
       <div>
-        <label>Term, önceden sağlıklı mı?</label>
+        <label data-i18n="termLabel"></label>
         <div class="seg" id="seg-term">
-          <button data-val="yes" class="neutral">Evet</button>
-          <button data-val="no" class="neutral">Hayır / bilinmiyor</button>
+          <button data-val="yes" class="neutral" data-i18n="yes"></button>
+          <button data-val="no" class="neutral" data-i18n="noUnknown"></button>
         </div>
       </div>
       <div>
-        <label>İdrar analizi</label>
+        <label data-i18n="urineLabel"></label>
         <select id="urine">
-          <option value="unknown">Yapılmadı / bilinmiyor</option>
-          <option value="neg">Negatif</option>
-          <option value="pos">Pozitif (lökositüri)</option>
+          <option value="unknown" data-i18n="urineUnknown"></option>
+          <option value="neg" data-i18n="urineNeg"></option>
+          <option value="pos" data-i18n="urinePos"></option>
         </select>
       </div>
       <div>
-        <label>Prokalsitonin — PCT (ng/mL)<span class="hint">boş bırakılabilir</span></label>
-        <input type="number" step="0.01" id="pct" placeholder="örn. 0.3">
+        <label data-i18n="pctLabel"></label><span class="hint" data-i18n="optionalHint"></span>
+        <input type="number" step="0.01" id="pct" placeholder="0.3">
       </div>
       <div>
-        <label>CRP (mg/L)<span class="hint">boş bırakılabilir</span></label>
-        <input type="number" step="0.1" id="crp" placeholder="örn. 8">
+        <label data-i18n="crpLabel"></label><span class="hint" data-i18n="optionalHint"></span>
+        <input type="number" step="0.1" id="crp" placeholder="8">
       </div>
       <div>
-        <label>Mutlak nötrofil sayısı — ANC (/µL)<span class="hint">boş bırakılabilir</span></label>
-        <input type="number" id="anc" placeholder="örn. 2500">
+        <label data-i18n="ancLabel"></label><span class="hint" data-i18n="optionalHint"></span>
+        <input type="number" id="anc" placeholder="2500">
       </div>
       <div>
-        <label>Lökosit — WBC (/µL)<span class="hint">NICE için; boş bırakılabilir</span></label>
-        <input type="number" id="wbc" placeholder="örn. 9000">
+        <label data-i18n="wbcLabel"></label><span class="hint" data-i18n="wbcHint"></span>
+        <input type="number" id="wbc" placeholder="9000">
       </div>
       <div>
-        <label>En yüksek ateş (°C, rektal)<span class="hint">boş bırakılabilir</span></label>
-        <input type="number" step="0.1" id="temp" placeholder="örn. 38.6">
+        <label data-i18n="tempLabel"></label><span class="hint" data-i18n="optionalHint"></span>
+        <input type="number" step="0.1" id="temp" placeholder="38.6">
       </div>
     </div>
-    <div style="margin-top:14px;"><button class="reset-link" id="reset">Formu sıfırla</button></div>
+    <div style="margin-top:14px;"><button class="reset-link" id="reset" data-i18n="resetForm"></button></div>
   </div>
 
   <div class="results">
-    <h2>Kılavuzlara göre değerlendirme</h2>
+    <h2 data-i18n="resultsHeading"></h2>
     <div class="res-grid" id="res-grid"></div>
 
     <div class="verdict-banner" id="verdict-banner">
       <div class="big" id="verdict-big">SONUÇ</div>
-      <div class="small" id="verdict-small">Değerlendirmek için yukarıdaki alanları doldurun.</div>
+      <div class="small" id="verdict-small"></div>
     </div>
   </div>
 
 </div>
 
 <footer>
-  <div class="author">Uz. Dr. Satuk Buğra Han Bozatlı · Edirne Sultan 1. Murat Devlet Hastanesi, Acil Servis</div>
-  <div>Kaynaklar: Pantell ve ark. Pediatrics 2021;148(2):e2021052228 (AAP) · Burstein ve ark. JAMA 2026;335:425–433 (PECARN) · NICE NG143 · Canadian Paediatric Society, güncelleme 2026 (CPS) · Gómez ve ark. Pediatrics 2016;138(2):e20154381 (Step-by-Step) · TND Yenidoğan Enfeksiyonları Tanı ve Tedavi Rehberi 2023</div>
-  <div style="margin-top:6px;">Kapsam: iyi görünümlü, term, ≤90 günlük ateşli infant (rektal ateş ≥38,0 °C). Kötü görünümlü veya instabil infantlar bu araçların ve kılavuzların düşük-risk algoritmalarının kapsamı dışındadır — doğrudan ileri değerlendirme ve ampirik tedavi gerekir.</div>
+  <div class="author" id="footer-author"></div>
+  <div id="footer-refs"></div>
+  <div style="margin-top:6px;" id="footer-scope"></div>
 </footer>
 
 <script>
 function $(id){ return document.getElementById(id); }
 
+/* ---------------- Static UI strings ---------------- */
+const STR = {
+  tr: {
+    title: 'Ateşli İnfantta Seçici LP Hesaplayıcı',
+    subtitle: '5. Trakya Acil Tıp Günleri — "Ateşli İnfantların Tümüne Lomber Ponksiyon Yapılmalı mı?" atışmasının eşlikçi aracı',
+    disclaimer: '<b>Not:</b> Bu araç yalnızca eğitim ve kongre sunumu amaçlıdır. Resmi, doğrulanmış bir klinik karar destek sistemi değildir, hiçbir kılavuzun yerine geçmez. Nihai LP kararı daima hekimin klinik değerlendirmesine, kurumsal olanaklara ve güvenilir izlem koşullarına bağlıdır.',
+    patientInfo: 'Hasta bilgileri',
+    ageLabel: 'Yaş (gün)',
+    ageHint: '0–90 gün arası',
+    appearanceLabel: 'Klinik görünüm',
+    appearanceGood: 'İyi görünümlü',
+    appearanceBad: 'Kötü görünümlü',
+    termLabel: 'Term, önceden sağlıklı mı?',
+    yes: 'Evet',
+    noUnknown: 'Hayır / bilinmiyor',
+    urineLabel: 'İdrar analizi',
+    urineUnknown: 'Yapılmadı / bilinmiyor',
+    urineNeg: 'Negatif',
+    urinePos: 'Pozitif (lökositüri)',
+    pctLabel: 'Prokalsitonin — PCT (ng/mL)',
+    crpLabel: 'CRP (mg/L)',
+    ancLabel: 'Mutlak nötrofil sayısı — ANC (/µL)',
+    wbcLabel: 'Lökosit — WBC (/µL)',
+    wbcHint: 'NICE için; boş bırakılabilir',
+    tempLabel: 'En yüksek ateş (°C, rektal)',
+    optionalHint: 'boş bırakılabilir',
+    resetForm: 'Formu sıfırla',
+    resultsHeading: 'Kılavuzlara göre değerlendirme',
+    footerAuthor: 'Uz. Dr. Satuk Buğra Han Bozatlı · Edirne Sultan 1. Murat Devlet Hastanesi, Acil Servis',
+    footerRefs: 'Kaynaklar: Pantell ve ark. Pediatrics 2021;148(2):e2021052228 (AAP) · Burstein ve ark. JAMA 2026;335:425–433 (PECARN) · NICE NG143 · Canadian Paediatric Society, güncelleme 2026 (CPS) · Gómez ve ark. Pediatrics 2016;138(2):e20154381 (Step-by-Step) · TND Yenidoğan Enfeksiyonları Tanı ve Tedavi Rehberi 2023',
+    footerScope: 'Kapsam: iyi görünümlü, term, ≤90 günlük ateşli infant (rektal ateş ≥38,0 °C). Kötü görünümlü veya instabil infantlar bu araçların ve kılavuzların düşük-risk algoritmalarının kapsamı dışındadır — doğrudan ileri değerlendirme ve ampirik tedavi gerekir.'
+  },
+  en: {
+    title: 'Febrile Infant Selective LP Calculator',
+    subtitle: '5th Trakya Emergency Medicine Days — companion tool for the "Should Lumbar Puncture Be Performed in All Febrile Infants?" debate',
+    disclaimer: '<b>Note:</b> This tool is for educational and conference-presentation purposes only. It is not a validated clinical decision-support system and does not replace any guideline. The final LP decision always rests on the clinician\'s judgment, institutional resources, and the reliability of follow-up.',
+    patientInfo: 'Patient information',
+    ageLabel: 'Age (days)',
+    ageHint: '0–90 days',
+    appearanceLabel: 'Clinical appearance',
+    appearanceGood: 'Well-appearing',
+    appearanceBad: 'Ill-appearing',
+    termLabel: 'Term, previously healthy?',
+    yes: 'Yes',
+    noUnknown: 'No / unknown',
+    urineLabel: 'Urinalysis',
+    urineUnknown: 'Not done / unknown',
+    urineNeg: 'Negative',
+    urinePos: 'Positive (pyuria)',
+    pctLabel: 'Procalcitonin — PCT (ng/mL)',
+    crpLabel: 'CRP (mg/L)',
+    ancLabel: 'Absolute neutrophil count — ANC (/µL)',
+    wbcLabel: 'White blood cell count — WBC (/µL)',
+    wbcHint: 'for NICE; optional',
+    tempLabel: 'Peak temperature (°C, rectal)',
+    optionalHint: 'optional',
+    resetForm: 'Reset form',
+    resultsHeading: 'Assessment by guideline',
+    footerAuthor: 'Dr. Satuk Buğra Han Bozatlı · Emergency Department, Edirne Sultan 1st Murat State Hospital',
+    footerRefs: 'References: Pantell et al. Pediatrics 2021;148(2):e2021052228 (AAP) · Burstein et al. JAMA 2026;335:425–433 (PECARN) · NICE NG143 · Canadian Paediatric Society, 2026 update (CPS) · Gómez et al. Pediatrics 2016;138(2):e20154381 (Step-by-Step) · Turkish Neonatal Society Guideline for Diagnosis and Treatment of Neonatal Infections 2023 (TND)',
+    footerScope: 'Scope: well-appearing, term, febrile infants ≤90 days old (rectal temperature ≥38.0 °C). Ill-appearing or unstable infants fall outside the scope of these tools and the guidelines\' low-risk algorithms — they require immediate further evaluation and empiric treatment.'
+  }
+};
+
+/* ---------------- Per-guideline message dictionary ---------------- */
+const NAMES = { aap:'AAP 2021', pecarn:'PECARN', nice:'NICE NG143', cps:'CPS 2024/26', step:'Step-by-Step', tnd:'TND 2023' };
+
+const MSG = {
+  bad: { tr:{verdict:'LP önerilir', why:'Kötü görünümlü/instabil infant — tüm kılavuzlarda ortak, düşük risk algoritmaları uygulanmaz.'},
+         en:{verdict:'LP recommended', why:'Ill-appearing/unstable infant — common ground across all guidelines; low-risk algorithms do not apply.'} },
+
+  aap_lt8: { tr:{verdict:'Kapsam dışı', why:'AAP 2021 8–60 gün aralığını kapsar. 0–7 gün ayrı neonatal değerlendirme ve yönetim gerektirir.'},
+             en:{verdict:'Out of scope', why:'AAP 2021 covers 8–60 days. 0–7 days requires separate neonatal evaluation and management.'} },
+  aap_8_21: { tr:{verdict:'LP önerilir', why:'8–21 gün: yaşa bağlı olarak LP, hastane yatışı ve parenteral antibiyotik önerilir.'},
+              en:{verdict:'LP recommended', why:'8–21 days: LP, hospital admission and parenteral antibiotics are recommended based on age alone.'} },
+  aap_22_28_missing: { tr:{verdict:'Belirteç eksik', why:'22–28 gün: karar için PCT (veya PCT yoksa CRP+ANC+ateş) gerekir.'},
+                       en:{verdict:'Marker missing', why:'22–28 days: a decision requires PCT (or, if unavailable, CRP + ANC + temperature).'} },
+  aap_22_28_red: { tr:{verdict:'LP önerilir', why:'22–28 gün: en az bir risk belirteci eşiği aşılmış (PCT/ANC/CRP/ateş).'},
+                   en:{verdict:'LP recommended', why:'22–28 days: at least one risk-marker threshold is exceeded (PCT/ANC/CRP/temperature).'} },
+  aap_22_28_yellow: { tr:{verdict:'LP düşünülebilir (seçici)', why:'22–28 gün: belirteçler normal sınırlarda; LP yapılmazsa hastanede gözlem gerekir.'},
+                      en:{verdict:'LP may be considered (selective)', why:'22–28 days: markers are within normal limits; if LP is not performed, inpatient observation is required.'} },
+  aap_29_60_missing: { tr:{verdict:'Belirteç eksik', why:'29–60 gün: karar için PCT (veya CRP+ANC+ateş) gerekir.'},
+                       en:{verdict:'Marker missing', why:'29–60 days: a decision requires PCT (or CRP + ANC + temperature).'} },
+  aap_29_60_yellow: { tr:{verdict:'LP düşünülebilir', why:'29–60 gün: anormal belirteç var; LP düşünülebilir, idrar bulguları ve izlem koşulları kararı etkiler.'},
+                      en:{verdict:'LP may be considered', why:'29–60 days: an abnormal marker is present; LP may be considered — urinalysis findings and reliability of follow-up affect the decision.'} },
+  aap_29_60_green: { tr:{verdict:'Rutin LP gerekmez', why:'29–60 gün: belirteçler normal — rutin LP gerekmez.'},
+                     en:{verdict:'Routine LP not required', why:'29–60 days: markers are normal — routine LP is not required.'} },
+  aap_gt60: { tr:{verdict:'Kapsam dışı', why:'AAP 2021 algoritması 60 güne kadar olan infantları kapsar.'},
+              en:{verdict:'Out of scope', why:'The AAP 2021 algorithm covers infants up to 60 days of age.'} },
+
+  pecarn_green: { tr:{verdict:'Düşük risk — LP gerekmeyebilir', why:'Negatif idrar + ANC ≤4.000/µL + PCT ≤0,5 ng/mL birlikte sağlanıyor.'},
+                  en:{verdict:'Low risk — LP may be avoided', why:'Negative urinalysis + ANC ≤4,000/µL + PCT ≤0.5 ng/mL are all met.'} },
+  pecarn_missing: { tr:{verdict:'Veri eksik', why:'Düşük risk sınıflaması için idrar analizi + ANC + PCT üçünün birlikte bilinmesi gerekir.'},
+                    en:{verdict:'Data missing', why:'Low-risk classification requires urinalysis, ANC and PCT to all be known.'} },
+  pecarn_yellow: { tr:{verdict:'Seçici LP — bireyselleştir', why:'Düşük risk ölçütlerinin en az biri sağlanmıyor; temkinli, bireyselleştirilmiş yaklaşım önerilir.'},
+                   en:{verdict:'Selective LP — individualize', why:'At least one low-risk criterion is not met; a cautious, individualized approach is advised.'} },
+  pecarn_outofscope: { tr:{verdict:'Veri yok', why:"PECARN'ın yaşa göre LP kararı verisi 60 güne kadardır."},
+                       en:{verdict:'No data', why:"PECARN's age-based LP decision data extends only to 60 days."} },
+
+  nice_lt30: { tr:{verdict:'LP önerilir', why:'<1 ay: kontrendikasyon yoksa LP, parenteral antibiyotik ve hastane değerlendirmesi önerilir.'},
+               en:{verdict:'LP recommended', why:'<1 month: in the absence of contraindications, LP, parenteral antibiotics and hospital assessment are recommended.'} },
+  nice_30_90_red: { tr:{verdict:'LP önerilir', why:'1–3 ay: lökosit <5.000/µL veya >15.000/µL — LP önerilir.'},
+                    en:{verdict:'LP recommended', why:'1–3 months: white cell count <5,000/µL or >15,000/µL — LP is recommended.'} },
+  nice_30_90_missing: { tr:{verdict:'Lökosit gerekli', why:'1–3 ay: karar için lökosit (WBC) değeri gerekir.'},
+                        en:{verdict:'WBC required', why:'1–3 months: a decision requires the white blood cell count (WBC).'} },
+  nice_30_90_green: { tr:{verdict:'Rutin LP gerekmez', why:'1–3 ay: iyi görünüm + lökosit 5.000–15.000/µL — rutin LP gerekmez, klinik değerlendirme sürer.'},
+                      en:{verdict:'Routine LP not required', why:'1–3 months: well-appearing + WBC 5,000–15,000/µL — routine LP is not required, though clinical assessment continues.'} },
+  nice_outofscope: { tr:{verdict:'Kapsam dışı', why:'NICE NG143 bu özet 3 aya kadar olan infantları kapsar.'},
+                     en:{verdict:'Out of scope', why:'This summary of NICE NG143 covers infants up to 3 months of age.'} },
+
+  cps_0_28: { tr:{verdict:'Seçici LP + hastanede gözlem', why:'0–28 gün: düşük risk ölçütlerini karşılayan infantlarda LP kararı bireyselleştirilir; LP yapılmasa da hastanede gözlem gerekir.'},
+              en:{verdict:'Selective LP + inpatient observation', why:'0–28 days: in infants meeting low-risk criteria, the LP decision is individualized; even without LP, inpatient observation is required.'} },
+  cps_29_60_yellow: { tr:{verdict:'LP, antibiyotik ve yatış önerilir', why:'29–60 gün: inflamatuvar belirteç(ler) anormal.'},
+                      en:{verdict:'LP, antibiotics and admission recommended', why:'29–60 days: inflammatory marker(s) are abnormal.'} },
+  cps_29_60_missing: { tr:{verdict:'Belirteç eksik', why:'29–60 gün: karar için PCT/CRP/ANC gerekir.'},
+                       en:{verdict:'Marker missing', why:'29–60 days: a decision requires PCT/CRP/ANC.'} },
+  cps_29_60_green: { tr:{verdict:'Rutin LP gerekmez', why:'29–60 gün: belirteçler normal.'},
+                     en:{verdict:'Routine LP not required', why:'29–60 days: markers are normal.'} },
+  cps_61_90_urinepos: { tr:{verdict:'İdrar bulgusu değerlendirilmeli', why:'61–90 gün: idrar pozitif; düşük riskte dahi değerlendirmeye dahil edilir.'},
+                        en:{verdict:'Urinalysis finding needs evaluation', why:'61–90 days: urinalysis is positive; this is factored in even within the low-risk pathway.'} },
+  cps_61_90_green: { tr:{verdict:'Düşük riskte ayaktan izlem', why:'61–90 gün: güvenilir izlem koşullarıyla ayaktan takip uygun olabilir.'},
+                     en:{verdict:'Low risk — outpatient follow-up', why:'61–90 days: with reliable follow-up arrangements, outpatient management may be appropriate.'} },
+
+  step_le21: { tr:{verdict:'Yüksek risk (otomatik)', why:'≤21 gün algoritmada otomatik yüksek risk kabul edilir; düşük risk ölçütleri bu yaş grubuna uygulanmaz.'},
+               en:{verdict:'High risk (automatic)', why:'≤21 days is automatically classified as high risk in the algorithm; low-risk criteria do not apply to this age group.'} },
+  step_missing: { tr:{verdict:'Veri eksik', why:'Düşük risk sınıflaması için idrar + PCT + CRP + ANC + klinik görünümün birlikte bilinmesi gerekir.'},
+                  en:{verdict:'Data missing', why:'Low-risk classification requires urinalysis, PCT, CRP, ANC and clinical appearance to all be known.'} },
+  step_green: { tr:{verdict:'Düşük risk — seçici LP', why:'Tüm düşük risk ölçütleri birlikte sağlanıyor (idrar negatif, PCT <0,5, CRP ≤20, ANC ≤10.000/µL).'},
+                en:{verdict:'Low risk — selective LP', why:'All low-risk criteria are met together (negative urinalysis, PCT <0.5, CRP ≤20, ANC ≤10,000/µL).'} },
+  step_yellow: { tr:{verdict:'Orta risk', why:'Önceki basamaklar negatifken CRP >20 mg/L veya ANC >10.000/µL — gözlem ve ek değerlendirme gerekir.'},
+                 en:{verdict:'Intermediate risk', why:'With earlier steps negative, CRP >20 mg/L or ANC >10,000/µL — observation and further assessment are required.'} },
+  step_red: { tr:{verdict:'Yüksek risk', why:'Lökositüri veya PCT ≥0,5 ng/mL mevcut — ileri değerlendirme gerekir.'},
+              en:{verdict:'High risk', why:'Pyuria or PCT ≥0.5 ng/mL is present — further evaluation is required.'} },
+  step_outofscope: { tr:{verdict:'Kapsam dışı', why:'Step-by-Step ≤90 günlük infantları kapsar.'},
+                     en:{verdict:'Out of scope', why:'Step-by-Step covers infants ≤90 days of age.'} },
+
+  tnd_general: { tr:{verdict:'Genel çerçeve (yaşa özgü eşik yok)', why:'Önce klinik görünüm, sonra yaşa uygun kılavuz + laboratuvar değerlendirmesi. 29–90 gün için doğrulanmış, bağımsız bir düşük risk kuralı değildir.'},
+                 en:{verdict:'General framework (no age-specific thresholds)', why:'Assess clinical appearance first, then apply age-appropriate guideline plus laboratory evaluation. It is not a validated, independent low-risk rule for the 29–90 day range.'} }
+};
+
+const VERDICT_MSG = {
+  initial: { tr:{big:'SONUÇ', small:'Değerlendirmek için en az yaş (gün) ve klinik görünüm alanlarını doldurun.'},
+             en:{big:'RESULT', small:'Enter at least the age (days) and clinical appearance to get an assessment.'} },
+  bad: { tr:{big:'LP ÖNERİLİR', small:'Kötü görünümlü/instabil infantta acil değerlendirme, LP, ampirik parenteral antibiyotik ve yatış gerekir. Bu durum "seçici LP" tartışmasının kapsamı dışındadır.'},
+         en:{big:'LP RECOMMENDED', small:'An ill-appearing/unstable infant requires urgent evaluation, LP, empiric parenteral antibiotics and admission. This falls outside the scope of the "selective LP" debate.'} },
+  red: { tr:{big:'BİRLEŞİK ÖNERİ: LP ÖNERİLİR / YÜKSEK RİSK', small:'En az bir kılavuza göre bu infant yüksek risk grubunda veya LP eşiğini aşıyor. Risk temelli yaklaşımda bu, LP yönünde ağırlık taşır — nihai karar klinik değerlendirmeyle birlikte verilir.'},
+        en:{big:'COMBINED RECOMMENDATION: LP RECOMMENDED / HIGH RISK', small:'At least one guideline places this infant in the high-risk group or past its LP threshold. In a risk-based approach this weighs toward LP — the final decision is still made together with clinical judgment.'} },
+  yellow: { tr:{big:'BİRLEŞİK ÖNERİ: SEÇİCİ LP — BİREYSELLEŞTİR', small:"Kılavuzlar bu profildeki infantta LP'yi zorunlu kılmıyor, ama tamamen dışlamıyor da. Yaş, klinik görünüm, biyobelirteçler ve güvenilir izlem olanakları birlikte değerlendirilerek seçici bir LP/gözlem kararı verilmelidir."},
+          en:{big:'COMBINED RECOMMENDATION: SELECTIVE LP — INDIVIDUALIZE', small:'The guidelines neither mandate nor fully exclude LP for this profile. Age, clinical appearance, biomarkers and the reliability of follow-up should be weighed together to reach a selective LP/observation decision.'} },
+  missing: { tr:{big:'DEĞERLENDİRME İÇİN VERİ YETERSİZ', small:'Birleşik bir öneri üretmek için en az idrar analizi ve bir biyobelirteç (PCT veya CRP+ANC) daha girin.'},
+             en:{big:'INSUFFICIENT DATA FOR ASSESSMENT', small:'Enter at least a urinalysis result and one biomarker (PCT, or CRP + ANC) to generate a combined recommendation.'} },
+  green: { tr:{big:'BİRLEŞİK ÖNERİ: RUTİN LP GEREKMEZ', small:"İyi görünümlü bu infant için girilen veriler, kılavuzların düşük risk eşiklerini karşılıyor. Ateş tek başına LP zorunluluğu yaratmaz — risk temelli, seçici yaklaşım ve güvenilir izlem yeterli olabilir."},
+          en:{big:'COMBINED RECOMMENDATION: ROUTINE LP NOT REQUIRED', small:'For this well-appearing infant, the entered data meets the guidelines\' low-risk thresholds. Fever alone does not mandate LP — a risk-based, selective approach with reliable follow-up may be sufficient.'} }
+};
+
+let lang = 'tr';
 let state = { appearance:null, term:null };
+
+function applyStaticStrings(){
+  const s = STR[lang];
+  document.documentElement.lang = lang;
+  document.title = s.title;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if (s[key] !== undefined) el.textContent = s[key];
+  });
+  $('disclaimer').innerHTML = s.disclaimer;
+  $('footer-author').textContent = s.footerAuthor;
+  $('footer-refs').textContent = s.footerRefs;
+  $('footer-scope').textContent = s.footerScope;
+  document.querySelectorAll('#lang-toggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+}
+
+$('lang-toggle').querySelectorAll('button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    lang = btn.dataset.lang;
+    applyStaticStrings();
+    compute();
+  });
+});
 
 function setupSeg(id, key){
   const seg = $(id);
@@ -191,6 +387,19 @@ function card(container, cls, name, verdict, why){
   container.appendChild(d);
 }
 
+function cardM(container, cls, nameKey, msgKey){
+  const m = MSG[msgKey][lang];
+  card(container, cls, NAMES[nameKey], m.verdict, m.why);
+}
+
+function setBanner(key, colorOverride){
+  const m = VERDICT_MSG[key][lang];
+  const colors = { initial:'#1F6F5C', bad:'#7a1620', red:'#B23A48', yellow:'#8a6d1f', missing:'#405C80', green:'#1F6F5C' };
+  $('verdict-banner').style.background = colorOverride || colors[key];
+  $('verdict-big').textContent = m.big;
+  $('verdict-small').textContent = m.small;
+}
+
 function compute(){
   const grid = $('res-grid');
   grid.innerHTML = '';
@@ -199,140 +408,117 @@ function compute(){
   const urine = $('urine').value;
   const bad = state.appearance === 'bad';
   const good = state.appearance === 'good';
-  const term = state.term === 'yes';
 
   if (age === null || state.appearance === null) {
-    $('verdict-big').textContent = 'SONUÇ';
-    $('verdict-small').textContent = 'Değerlendirmek için en az yaş (gün) ve klinik görünüm alanlarını doldurun.';
-    $('verdict-banner').style.background = '#1F6F5C';
+    setBanner('initial');
     return;
   }
 
   // Universal short-circuit: ill-appearing infant
   if (bad) {
-    ['AAP 2021','PECARN','NICE NG143','CPS 2024/26','Step-by-Step','TND 2023'].forEach(n=>{
-      card(grid, 'red', n, 'LP önerilir', 'Kötü görünümlü/instabil infant — tüm kılavuzlarda ortak, düşük risk algoritmaları uygulanmaz.');
-    });
-    $('verdict-banner').style.background = '#7a1620';
-    $('verdict-big').textContent = 'LP ÖNERİLİR';
-    $('verdict-small').textContent = 'Kötü görünümlü/instabil infantta acil değerlendirme, LP, ampirik parenteral antibiyotik ve yatış gerekir. Bu durum "seçici LP" tartışmasının kapsamı dışındadır.';
+    ['aap','pecarn','nice','cps','step','tnd'].forEach(k=> cardM(grid,'red',k,'bad'));
+    setBanner('bad');
     return;
   }
 
   // ---- AAP 2021 (8–60 gün, term, iyi görünümlü) ----
   if (age < 8) {
-    card(grid,'gray','AAP 2021','Kapsam dışı','AAP 2021 8–60 gün aralığını kapsar. 0–7 gün ayrı neonatal değerlendirme ve yönetim gerektirir.');
+    cardM(grid,'gray','aap','aap_lt8');
   } else if (age <= 21) {
-    card(grid,'red','AAP 2021','LP önerilir','8–21 gün: yaşa bağlı olarak LP, hastane yatışı ve parenteral antibiyotik önerilir.');
+    cardM(grid,'red','aap','aap_8_21');
   } else if (age <= 28) {
     const haveMarker = pct!==null || crp!==null || anc!==null || temp!==null;
     let abn = pct!==null ? (pct>0.5 || (anc!==null && anc>4000))
                           : ((crp!==null && crp>20) || (anc!==null && anc>5200) || (temp!==null && temp>38.5));
-    if (!haveMarker) card(grid,'gray','AAP 2021','Belirteç eksik','22–28 gün: karar için PCT (veya PCT yoksa CRP+ANC+ateş) gerekir.');
-    else if (abn) card(grid,'red','AAP 2021','LP önerilir','22–28 gün: en az bir risk belirteci eşiği aşılmış (PCT/ANC/CRP/ateş).');
-    else card(grid,'yellow','AAP 2021','LP düşünülebilir (seçici)','22–28 gün: belirteçler normal sınırlarda; LP yapılmazsa hastanede gözlem gerekir.');
+    if (!haveMarker) cardM(grid,'gray','aap','aap_22_28_missing');
+    else if (abn) cardM(grid,'red','aap','aap_22_28_red');
+    else cardM(grid,'yellow','aap','aap_22_28_yellow');
   } else if (age <= 60) {
     const haveMarker = pct!==null || crp!==null || anc!==null || temp!==null;
     let abn = pct!==null ? (pct>0.5 || (anc!==null && anc>4000))
                           : ((crp!==null && crp>20) || (anc!==null && anc>5200) || (temp!==null && temp>38.5));
-    if (!haveMarker) card(grid,'gray','AAP 2021','Belirteç eksik','29–60 gün: karar için PCT (veya CRP+ANC+ateş) gerekir.');
-    else if (abn) card(grid,'yellow','AAP 2021','LP düşünülebilir','29–60 gün: anormal belirteç var; LP düşünülebilir, idrar bulguları ve izlem koşulları kararı etkiler.');
-    else card(grid,'green','AAP 2021','Rutin LP gerekmez','29–60 gün: belirteçler normal — rutin LP gerekmez.');
+    if (!haveMarker) cardM(grid,'gray','aap','aap_29_60_missing');
+    else if (abn) cardM(grid,'yellow','aap','aap_29_60_yellow');
+    else cardM(grid,'green','aap','aap_29_60_green');
   } else {
-    card(grid,'gray','AAP 2021','Kapsam dışı','AAP 2021 algoritması 60 güne kadar olan infantları kapsar.');
+    cardM(grid,'gray','aap','aap_gt60');
   }
 
   // ---- PECARN (idrar + ANC + PCT düşük risk kuralı, 0–60 gün) ----
   if (age <= 60) {
     if (urine==='neg' && anc!==null && anc<=4000 && pct!==null && pct<=0.5) {
-      card(grid,'green','PECARN','Düşük risk — LP gerekmeyebilir','Negatif idrar + ANC ≤4.000/µL + PCT ≤0,5 ng/mL birlikte sağlanıyor.');
+      cardM(grid,'green','pecarn','pecarn_green');
     } else if (urine==='unknown' || anc===null || pct===null) {
-      card(grid,'gray','PECARN','Veri eksik','Düşük risk sınıflaması için idrar analizi + ANC + PCT üçünün birlikte bilinmesi gerekir.');
+      cardM(grid,'gray','pecarn','pecarn_missing');
     } else {
-      card(grid,'yellow','PECARN','Seçici LP — bireyselleştir','Düşük risk ölçütlerinin en az biri sağlanmıyor; temkinli, bireyselleştirilmiş yaklaşım önerilir.');
+      cardM(grid,'yellow','pecarn','pecarn_yellow');
     }
   } else {
-    card(grid,'gray','PECARN','Veri yok','PECARN'+"'"+'ın yaşa göre LP kararı verisi 60 güne kadardır.');
+    cardM(grid,'gray','pecarn','pecarn_outofscope');
   }
 
   // ---- NICE NG143 ----
   if (age < 30) {
-    card(grid,'red','NICE NG143','LP önerilir','<1 ay: kontrendikasyon yoksa LP, parenteral antibiyotik ve hastane değerlendirmesi önerilir.');
+    cardM(grid,'red','nice','nice_lt30');
   } else if (age <= 90) {
     if (wbc!==null && (wbc<5000 || wbc>15000)) {
-      card(grid,'red','NICE NG143','LP önerilir','1–3 ay: lökosit <5.000/µL veya >15.000/µL — LP önerilir.');
+      cardM(grid,'red','nice','nice_30_90_red');
     } else if (wbc===null) {
-      card(grid,'gray','NICE NG143','Lökosit gerekli','1–3 ay: karar için lökosit (WBC) değeri gerekir.');
+      cardM(grid,'gray','nice','nice_30_90_missing');
     } else {
-      card(grid,'green','NICE NG143','Rutin LP gerekmez','1–3 ay: iyi görünüm + lökosit 5.000–15.000/µL — rutin LP gerekmez, klinik değerlendirme sürer.');
+      cardM(grid,'green','nice','nice_30_90_green');
     }
   } else {
-    card(grid,'gray','NICE NG143','Kapsam dışı','NICE NG143 bu özet 3 aya kadar olan infantları kapsar.');
+    cardM(grid,'gray','nice','nice_outofscope');
   }
 
   // ---- CPS 2024/26 ----
   if (age <= 28) {
-    card(grid,'yellow','CPS 2024/26','Seçici LP + hastanede gözlem','0–28 gün: düşük risk ölçütlerini karşılayan infantlarda LP kararı bireyselleştirilir; LP yapılmasa da hastanede gözlem gerekir.');
+    cardM(grid,'yellow','cps','cps_0_28');
   } else if (age <= 60) {
     let abn = (pct!==null && pct>0.5) || (crp!==null && crp>20) || (anc!==null && anc>4000);
-    if (abn) card(grid,'yellow','CPS 2024/26','LP, antibiyotik ve yatış önerilir','29–60 gün: inflamatuvar belirteç(ler) anormal.');
-    else if (pct===null && crp===null && anc===null) card(grid,'gray','CPS 2024/26','Belirteç eksik','29–60 gün: karar için PCT/CRP/ANC gerekir.');
-    else card(grid,'green','CPS 2024/26','Rutin LP gerekmez','29–60 gün: belirteçler normal.');
+    if (abn) cardM(grid,'yellow','cps','cps_29_60_yellow');
+    else if (pct===null && crp===null && anc===null) cardM(grid,'gray','cps','cps_29_60_missing');
+    else cardM(grid,'green','cps','cps_29_60_green');
   } else {
-    if (urine==='pos') card(grid,'yellow','CPS 2024/26','İdrar bulgusu değerlendirilmeli','61–90 gün: idrar pozitif; düşük riskte dahi değerlendirmeye dahil edilir.');
-    else card(grid,'green','CPS 2024/26','Düşük riskte ayaktan izlem','61–90 gün: güvenilir izlem koşullarıyla ayaktan takip uygun olabilir.');
+    if (urine==='pos') cardM(grid,'yellow','cps','cps_61_90_urinepos');
+    else cardM(grid,'green','cps','cps_61_90_green');
   }
 
   // ---- Step-by-Step (Gómez 2016) ----
   if (age <= 21) {
-    card(grid,'red','Step-by-Step','Yüksek risk (otomatik)','≤21 gün algoritmada otomatik yüksek risk kabul edilir; düşük risk ölçütleri bu yaş grubuna uygulanmaz.');
+    cardM(grid,'red','step','step_le21');
   } else if (age <= 90) {
     const haveAll = urine!=='unknown' && pct!==null && crp!==null && anc!==null;
     if (!haveAll) {
-      card(grid,'gray','Step-by-Step','Veri eksik','Düşük risk sınıflaması için idrar + PCT + CRP + ANC + klinik görünümün birlikte bilinmesi gerekir.');
+      cardM(grid,'gray','step','step_missing');
     } else if (urine==='neg' && pct<0.5 && crp<=20 && anc<=10000) {
-      card(grid,'green','Step-by-Step','Düşük risk — seçici LP','Tüm düşük risk ölçütleri birlikte sağlanıyor (idrar negatif, PCT <0,5, CRP ≤20, ANC ≤10.000/µL).');
+      cardM(grid,'green','step','step_green');
     } else if (crp>20 || anc>10000) {
-      card(grid,'yellow','Step-by-Step','Orta risk','Önceki basamaklar negatifken CRP >20 mg/L veya ANC >10.000/µL — gözlem ve ek değerlendirme gerekir.');
+      cardM(grid,'yellow','step','step_yellow');
     } else {
-      card(grid,'red','Step-by-Step','Yüksek risk','Lökositüri veya PCT ≥0,5 ng/mL mevcut — ileri değerlendirme gerekir.');
+      cardM(grid,'red','step','step_red');
     }
   } else {
-    card(grid,'gray','Step-by-Step','Kapsam dışı','Step-by-Step ≤90 günlük infantları kapsar.');
+    cardM(grid,'gray','step','step_outofscope');
   }
 
   // ---- TND 2023 ----
-  card(grid,'gray','TND 2023','Genel çerçeve (yaşa özgü eşik yok)','Önce klinik görünüm, sonra yaşa uygun kılavuz + laboratuvar değerlendirmesi. 29–90 gün için doğrulanmış, bağımsız bir düşük risk kuralı değildir.');
+  cardM(grid,'gray','tnd','tnd_general');
 
   // ---- Combined "seçici LP" verdict ----
   const cards = Array.from(grid.querySelectorAll('.res-card'));
   const anyRed = cards.some(c=>c.classList.contains('red'));
   const anyYellow = cards.some(c=>c.classList.contains('yellow'));
-  const missing = cards.filter(c=>c.classList.contains('gray') && c.querySelector('.verdict').textContent.match(/eksik|gerekli/)).length;
+  const missingCount = cards.filter(c=>c.classList.contains('gray')).length;
 
-  let bannerColor, big, small;
-  if (anyRed) {
-    bannerColor = '#B23A48';
-    big = 'BİRLEŞİK ÖNERİ: LP ÖNERİLİR / YÜKSEK RİSK';
-    small = 'En az bir kılavuza göre bu infant yüksek risk grubunda veya LP eşiğini aşıyor. Risk temelli yaklaşımda bu, LP yönünde ağırlık taşır — nihai karar klinik değerlendirmeyle birlikte verilir.';
-  } else if (anyYellow) {
-    bannerColor = '#8a6d1f';
-    big = 'BİRLEŞİK ÖNERİ: SEÇİCİ LP — BİREYSELLEŞTİR';
-    small = 'Kılavuzlar bu profildeki infantta LP'+"'"+'yi zorunlu kılmıyor, ama tamamen dışlamıyor da. Yaş, klinik görünüm, biyobelirteçler ve güvenilir izlem olanakları birlikte değerlendirilerek seçici bir LP/gözlem kararı verilmelidir.';
-  } else if (missing > 2) {
-    bannerColor = '#405C80';
-    big = 'DEĞERLENDİRME İÇİN VERİ YETERSİZ';
-    small = 'Birleşik bir öneri üretmek için en az idrar analizi ve bir biyobelirteç (PCT veya CRP+ANC) daha girin.';
-  } else {
-    bannerColor = '#1F6F5C';
-    big = 'BİRLEŞİK ÖNERİ: RUTİN LP GEREKMEZ';
-    small = 'İyi görünümlü bu infant için girilen veriler, kılavuzların düşük risk eşiklerini karşılıyor. Ateş tek başına LP zorunluluğu yaratmaz — risk temelli, seçici yaklaşım ve güvenilir izlem yeterli olabilir.';
-  }
-  $('verdict-banner').style.background = bannerColor;
-  $('verdict-big').textContent = big;
-  $('verdict-small').textContent = small;
+  if (anyRed) setBanner('red');
+  else if (anyYellow) setBanner('yellow');
+  else if (missingCount > 2) setBanner('missing');
+  else setBanner('green');
 }
 
+applyStaticStrings();
 compute();
 </script>
 </body>
