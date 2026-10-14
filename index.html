@@ -287,6 +287,8 @@ const MSG = {
                         en:{verdict:'Urinalysis finding needs evaluation', why:'61–90 days: urinalysis is positive; this is factored in even within the low-risk pathway.'} },
   cps_61_90_green: { tr:{verdict:'Düşük riskte ayaktan izlem', why:'61–90 gün: güvenilir izlem koşullarıyla ayaktan takip uygun olabilir.'},
                      en:{verdict:'Low risk — outpatient follow-up', why:'61–90 days: with reliable follow-up arrangements, outpatient management may be appropriate.'} },
+  cps_outofscope: { tr:{verdict:'Kapsam dışı', why:'Bu özet CPS kılavuzunu 90 güne kadar olan infantlar için ele alır.'},
+                    en:{verdict:'Out of scope', why:'This summary of the CPS guideline covers infants up to 90 days of age.'} },
 
   step_le21: { tr:{verdict:'Yüksek risk (otomatik)', why:'≤21 gün algoritmada otomatik yüksek risk kabul edilir; düşük risk ölçütleri bu yaş grubuna uygulanmaz.'},
                en:{verdict:'High risk (automatic)', why:'≤21 days is automatically classified as high risk in the algorithm; low-risk criteria do not apply to this age group.'} },
@@ -317,7 +319,9 @@ const VERDICT_MSG = {
   missing: { tr:{big:'DEĞERLENDİRME İÇİN VERİ YETERSİZ', small:'Birleşik bir öneri üretmek için en az idrar analizi ve bir biyobelirteç (PCT veya CRP+ANC) daha girin.'},
              en:{big:'INSUFFICIENT DATA FOR ASSESSMENT', small:'Enter at least a urinalysis result and one biomarker (PCT, or CRP + ANC) to generate a combined recommendation.'} },
   green: { tr:{big:'BİRLEŞİK ÖNERİ: RUTİN LP GEREKMEZ', small:"İyi görünümlü bu infant için girilen veriler, kılavuzların düşük risk eşiklerini karşılıyor. Ateş tek başına LP zorunluluğu yaratmaz — risk temelli, seçici yaklaşım ve güvenilir izlem yeterli olabilir."},
-          en:{big:'COMBINED RECOMMENDATION: ROUTINE LP NOT REQUIRED', small:'For this well-appearing infant, the entered data meets the guidelines\' low-risk thresholds. Fever alone does not mandate LP — a risk-based, selective approach with reliable follow-up may be sufficient.'} }
+          en:{big:'COMBINED RECOMMENDATION: ROUTINE LP NOT REQUIRED', small:'For this well-appearing infant, the entered data meets the guidelines\' low-risk thresholds. Fever alone does not mandate LP — a risk-based, selective approach with reliable follow-up may be sufficient.'} },
+  oos: { tr:{big:'YAŞ ARALIĞI KAPSAM DIŞI', small:'Girilen yaş, bu araçta yer alan kılavuzların hiçbirinin düşük-risk algoritması kapsamında değil (hepsi ≤90 gün için geçerlidir). Klinik değerlendirme bağımsız olarak yapılmalıdır.'},
+       en:{big:'AGE OUTSIDE GUIDELINE SCOPE', small:'The entered age falls outside the low-risk algorithms of every guideline in this tool (all apply only through 90 days). Clinical judgment should be applied independently.'} }
 };
 
 let lang = 'tr';
@@ -380,21 +384,23 @@ function num(id){
   return v === '' ? null : parseFloat(v);
 }
 
-function card(container, cls, name, verdict, why){
+function card(container, cls, name, verdict, why, oos){
   const d = document.createElement('div');
-  d.className = 'res-card ' + cls;
+  d.className = 'res-card ' + cls + (oos ? ' oos' : '');
   d.innerHTML = `<div class="name">${name}</div><div class="verdict">${verdict}</div><div class="why">${why}</div>`;
   container.appendChild(d);
 }
 
-function cardM(container, cls, nameKey, msgKey){
+// oos = "out of scope for this age" (structural — excluded from the combined verdict),
+// as opposed to a plain gray "data missing" card (applicable guideline, just needs more inputs).
+function cardM(container, cls, nameKey, msgKey, oos){
   const m = MSG[msgKey][lang];
-  card(container, cls, NAMES[nameKey], m.verdict, m.why);
+  card(container, cls, NAMES[nameKey], m.verdict, m.why, !!oos);
 }
 
 function setBanner(key, colorOverride){
   const m = VERDICT_MSG[key][lang];
-  const colors = { initial:'#1F6F5C', bad:'#7a1620', red:'#B23A48', yellow:'#8a6d1f', missing:'#405C80', green:'#1F6F5C' };
+  const colors = { initial:'#1F6F5C', bad:'#7a1620', red:'#B23A48', yellow:'#8a6d1f', missing:'#405C80', green:'#1F6F5C', oos:'#505563' };
   $('verdict-banner').style.background = colorOverride || colors[key];
   $('verdict-big').textContent = m.big;
   $('verdict-small').textContent = m.small;
@@ -423,7 +429,7 @@ function compute(){
 
   // ---- AAP 2021 (8–60 gün, term, iyi görünümlü) ----
   if (age < 8) {
-    cardM(grid,'gray','aap','aap_lt8');
+    cardM(grid,'gray','aap','aap_lt8',true);
   } else if (age <= 21) {
     cardM(grid,'red','aap','aap_8_21');
   } else if (age <= 28) {
@@ -441,7 +447,7 @@ function compute(){
     else if (abn) cardM(grid,'yellow','aap','aap_29_60_yellow');
     else cardM(grid,'green','aap','aap_29_60_green');
   } else {
-    cardM(grid,'gray','aap','aap_gt60');
+    cardM(grid,'gray','aap','aap_gt60',true);
   }
 
   // ---- PECARN (idrar + ANC + PCT düşük risk kuralı, 0–60 gün) ----
@@ -454,7 +460,7 @@ function compute(){
       cardM(grid,'yellow','pecarn','pecarn_yellow');
     }
   } else {
-    cardM(grid,'gray','pecarn','pecarn_outofscope');
+    cardM(grid,'gray','pecarn','pecarn_outofscope',true);
   }
 
   // ---- NICE NG143 ----
@@ -469,7 +475,7 @@ function compute(){
       cardM(grid,'green','nice','nice_30_90_green');
     }
   } else {
-    cardM(grid,'gray','nice','nice_outofscope');
+    cardM(grid,'gray','nice','nice_outofscope',true);
   }
 
   // ---- CPS 2024/26 ----
@@ -480,9 +486,11 @@ function compute(){
     if (abn) cardM(grid,'yellow','cps','cps_29_60_yellow');
     else if (pct===null && crp===null && anc===null) cardM(grid,'gray','cps','cps_29_60_missing');
     else cardM(grid,'green','cps','cps_29_60_green');
-  } else {
+  } else if (age <= 90) {
     if (urine==='pos') cardM(grid,'yellow','cps','cps_61_90_urinepos');
     else cardM(grid,'green','cps','cps_61_90_green');
+  } else {
+    cardM(grid,'gray','cps','cps_outofscope',true);
   }
 
   // ---- Step-by-Step (Gómez 2016) ----
@@ -500,21 +508,25 @@ function compute(){
       cardM(grid,'red','step','step_red');
     }
   } else {
-    cardM(grid,'gray','step','step_outofscope');
+    cardM(grid,'gray','step','step_outofscope',true);
   }
 
   // ---- TND 2023 ----
-  cardM(grid,'gray','tnd','tnd_general');
+  cardM(grid,'gray','tnd','tnd_general',true);
 
   // ---- Combined "seçici LP" verdict ----
+  // Only guidelines that actually apply at this age count toward the combined
+  // signal — an "out of scope" card (oos) must never be treated as "missing data".
   const cards = Array.from(grid.querySelectorAll('.res-card'));
-  const anyRed = cards.some(c=>c.classList.contains('red'));
-  const anyYellow = cards.some(c=>c.classList.contains('yellow'));
-  const missingCount = cards.filter(c=>c.classList.contains('gray')).length;
+  const applicable = cards.filter(c=>!c.classList.contains('oos'));
+  const anyRed = applicable.some(c=>c.classList.contains('red'));
+  const anyYellow = applicable.some(c=>c.classList.contains('yellow'));
+  const missingCount = applicable.filter(c=>c.classList.contains('gray')).length;
 
-  if (anyRed) setBanner('red');
+  if (applicable.length === 0) setBanner('oos');
+  else if (anyRed) setBanner('red');
   else if (anyYellow) setBanner('yellow');
-  else if (missingCount > 2) setBanner('missing');
+  else if (missingCount > 0) setBanner('missing');
   else setBanner('green');
 }
 
