@@ -202,6 +202,7 @@
 
 <div id="print-protocol"></div>
 
+<script src="logic.js"></script>
 <script>
 function $(id){ return document.getElementById(id); }
 
@@ -687,128 +688,30 @@ $('clear-history').addEventListener('click', ()=>{
 
 updateHistoryCounter();
 
+// Saf karar mantığı artık logic.js içinde yaşıyor (window.LPLogic) — bu,
+// arayüz ile araştırma/parametre-taraması script'inin (sweep.js) her zaman
+// AYNI kuralları çalıştırdığını garanti eder. compute() yalnızca girdileri
+// toplar, LPLogic.evaluateGuidelines()'ı çağırır ve sonucu DOM'a yazar.
 function compute(){
   const grid = $('res-grid');
   grid.innerHTML = '';
   const age = num('age');
   const pct = num('pct'), crp = num('crp'), anc = num('anc'), wbc = num('wbc'), temp = num('temp');
   const urine = $('urine').value;
-  const bad = state.appearance === 'bad';
-  const good = state.appearance === 'good';
 
   if (age === null || state.appearance === null) {
     setBanner('initial');
     return;
   }
 
-  // Universal short-circuit: ill-appearing infant
-  if (bad) {
-    ['aap','pecarn','nice','cps','step','tnd'].forEach(k=> cardM(grid,'red',k,'bad'));
-    setBanner('bad');
-    return;
-  }
+  const result = LPLogic.evaluateGuidelines({ age, appearance: state.appearance, urine, pct, crp, anc, wbc, temp });
 
-  // ---- AAP 2021 (8–60 gün, term, iyi görünümlü) ----
-  if (age < 8) {
-    cardM(grid,'gray','aap','aap_lt8',true);
-  } else if (age <= 21) {
-    cardM(grid,'red','aap','aap_8_21');
-  } else if (age <= 28) {
-    const haveMarker = pct!==null || crp!==null || anc!==null || temp!==null;
-    let abn = pct!==null ? (pct>0.5 || (anc!==null && anc>4000))
-                          : ((crp!==null && crp>20) || (anc!==null && anc>5200) || (temp!==null && temp>38.5));
-    if (!haveMarker) cardM(grid,'gray','aap','aap_22_28_missing');
-    else if (abn) cardM(grid,'red','aap','aap_22_28_red');
-    else cardM(grid,'yellow','aap','aap_22_28_yellow');
-  } else if (age <= 60) {
-    const haveMarker = pct!==null || crp!==null || anc!==null || temp!==null;
-    let abn = pct!==null ? (pct>0.5 || (anc!==null && anc>4000))
-                          : ((crp!==null && crp>20) || (anc!==null && anc>5200) || (temp!==null && temp>38.5));
-    if (!haveMarker) cardM(grid,'gray','aap','aap_29_60_missing');
-    else if (abn) cardM(grid,'yellow','aap','aap_29_60_yellow');
-    else cardM(grid,'green','aap','aap_29_60_green');
-  } else {
-    cardM(grid,'gray','aap','aap_gt60',true);
-  }
+  LPLogic.GUIDELINE_KEYS.forEach(k=>{
+    const r = result.byKey[k];
+    cardM(grid, r.cls, k, r.msgKey, r.oos);
+  });
 
-  // ---- PECARN (idrar + ANC + PCT düşük risk kuralı, 0–60 gün) ----
-  if (age <= 60) {
-    if (urine==='neg' && anc!==null && anc<=4000 && pct!==null && pct<=0.5) {
-      cardM(grid,'green','pecarn','pecarn_green');
-    } else if (urine==='unknown' || anc===null || pct===null) {
-      cardM(grid,'gray','pecarn','pecarn_missing');
-    } else {
-      cardM(grid,'yellow','pecarn','pecarn_yellow');
-    }
-  } else {
-    cardM(grid,'gray','pecarn','pecarn_outofscope',true);
-  }
-
-  // ---- NICE NG143 ----
-  if (age < 30) {
-    cardM(grid,'red','nice','nice_lt30');
-  } else if (age <= 90) {
-    if (wbc!==null && (wbc<5000 || wbc>15000)) {
-      cardM(grid,'red','nice','nice_30_90_red');
-    } else if (wbc===null) {
-      cardM(grid,'gray','nice','nice_30_90_missing');
-    } else {
-      cardM(grid,'green','nice','nice_30_90_green');
-    }
-  } else {
-    cardM(grid,'gray','nice','nice_outofscope',true);
-  }
-
-  // ---- CPS 2024/26 ----
-  if (age <= 28) {
-    cardM(grid,'yellow','cps','cps_0_28');
-  } else if (age <= 60) {
-    let abn = (pct!==null && pct>0.5) || (crp!==null && crp>20) || (anc!==null && anc>4000);
-    if (abn) cardM(grid,'yellow','cps','cps_29_60_yellow');
-    else if (pct===null && crp===null && anc===null) cardM(grid,'gray','cps','cps_29_60_missing');
-    else cardM(grid,'green','cps','cps_29_60_green');
-  } else if (age <= 90) {
-    if (urine==='pos') cardM(grid,'yellow','cps','cps_61_90_urinepos');
-    else cardM(grid,'green','cps','cps_61_90_green');
-  } else {
-    cardM(grid,'gray','cps','cps_outofscope',true);
-  }
-
-  // ---- Step-by-Step (Gómez 2016) ----
-  if (age <= 21) {
-    cardM(grid,'red','step','step_le21');
-  } else if (age <= 90) {
-    const haveAll = urine!=='unknown' && pct!==null && crp!==null && anc!==null;
-    if (!haveAll) {
-      cardM(grid,'gray','step','step_missing');
-    } else if (urine==='neg' && pct<0.5 && crp<=20 && anc<=10000) {
-      cardM(grid,'green','step','step_green');
-    } else if (crp>20 || anc>10000) {
-      cardM(grid,'yellow','step','step_yellow');
-    } else {
-      cardM(grid,'red','step','step_red');
-    }
-  } else {
-    cardM(grid,'gray','step','step_outofscope',true);
-  }
-
-  // ---- TND 2023 ----
-  cardM(grid,'gray','tnd','tnd_general',true);
-
-  // ---- Combined "seçici LP" verdict ----
-  // Only guidelines that actually apply at this age count toward the combined
-  // signal — an "out of scope" card (oos) must never be treated as "missing data".
-  const cards = Array.from(grid.querySelectorAll('.res-card'));
-  const applicable = cards.filter(c=>!c.classList.contains('oos'));
-  const anyRed = applicable.some(c=>c.classList.contains('red'));
-  const anyYellow = applicable.some(c=>c.classList.contains('yellow'));
-  const missingCount = applicable.filter(c=>c.classList.contains('gray')).length;
-
-  if (applicable.length === 0) setBanner('oos');
-  else if (anyRed) setBanner('red');
-  else if (anyYellow) setBanner('yellow');
-  else if (missingCount > 0) setBanner('missing');
-  else setBanner('green');
+  setBanner(result.banner);
 }
 
 applyStaticStrings();
