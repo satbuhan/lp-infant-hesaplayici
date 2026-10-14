@@ -68,6 +68,36 @@
   footer{ max-width:980px; margin:30px auto 0; padding:0 16px; font-size:11.5px; color:#505563; line-height:1.6; }
   footer .author{ font-weight:700; color:var(--navy); margin-bottom:4px; }
   .reset-link{ background:none; border:none; color:var(--blue); font-size:13px; font-weight:700; cursor:pointer; padding:0; text-decoration:underline; }
+  .export-btn{
+    background:var(--navy); color:#fff; border:none; border-radius:8px; padding:10px 18px;
+    font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; margin-top:16px;
+  }
+  .export-btn:hover{ opacity:0.9; }
+  .export-hint{ font-size:11.5px; color:#6b6c75; margin-top:6px; }
+  #print-protocol{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #print-protocol, #print-protocol *{ visibility:visible; }
+    #print-protocol{
+      display:block; position:absolute; top:0; left:0; width:100%;
+      padding:14mm; color:#000; font-family:'Liberation Sans','Arial',sans-serif;
+    }
+    #print-protocol h1{ font-size:18px; margin:0 0 4px; }
+    #print-protocol h2{ font-size:13px; margin:16px 0 8px; border-bottom:1px solid #999; padding-bottom:4px; }
+    .pp-meta{ border:1px solid #999; border-radius:4px; padding:8px 10px; margin-bottom:4px; }
+    .pp-meta div{ font-size:11px; margin-bottom:2px; }
+    .pp-table{ width:100%; border-collapse:collapse; font-size:11px; }
+    .pp-table td{ border:1px solid #ccc; padding:4px 8px; }
+    .pp-table td:first-child{ font-weight:700; width:45%; }
+    .pp-card{ border:1px solid #ccc; border-radius:4px; padding:7px 10px; margin-bottom:6px; font-size:10.5px; break-inside:avoid; }
+    .pp-name{ font-weight:700; margin-bottom:2px; }
+    .pp-why{ color:#333; }
+    .pp-combined{ border:2px solid #000; border-radius:6px; padding:10px 12px; margin-bottom:12px; break-inside:avoid; }
+    .pp-combined-big{ font-weight:800; font-size:13px; margin-bottom:4px; }
+    .pp-combined-small{ font-size:11px; }
+    .pp-disclaimer{ font-size:10px; color:#555; margin-top:14px; }
+    .pp-footnote{ font-size:9.5px; color:#777; margin-top:6px; }
+  }
   @media (max-width:520px){
     header h1, header p{ padding-right:0; }
     .lang-toggle{ position:static; display:inline-flex; margin-top:10px; }
@@ -152,6 +182,11 @@
       <div class="big" id="verdict-big">SONUÇ</div>
       <div class="small" id="verdict-small"></div>
     </div>
+
+    <div>
+      <button class="export-btn" id="export-pdf" data-i18n="exportPdfBtn"></button>
+      <div class="export-hint" data-i18n="exportHint"></div>
+    </div>
   </div>
 
 </div>
@@ -161,6 +196,8 @@
   <div id="footer-refs"></div>
   <div style="margin-top:6px;" id="footer-scope"></div>
 </footer>
+
+<div id="print-protocol"></div>
 
 <script>
 function $(id){ return document.getElementById(id); }
@@ -195,7 +232,20 @@ const STR = {
     resultsHeading: 'Kılavuzlara göre değerlendirme',
     footerAuthor: 'Uz. Dr. Satuk Buğra Han Bozatlı · Edirne Sultan 1. Murat Devlet Hastanesi, Acil Servis',
     footerRefs: 'Kaynaklar: Pantell ve ark. Pediatrics 2021;148(2):e2021052228 (AAP) · Burstein ve ark. JAMA 2026;335:425–433 (PECARN) · NICE NG143 · Canadian Paediatric Society, güncelleme 2026 (CPS) · Gómez ve ark. Pediatrics 2016;138(2):e20154381 (Step-by-Step) · TND Yenidoğan Enfeksiyonları Tanı ve Tedavi Rehberi 2023',
-    footerScope: 'Kapsam: iyi görünümlü, term, ≤90 günlük ateşli infant (rektal ateş ≥38,0 °C). Kötü görünümlü veya instabil infantlar bu araçların ve kılavuzların düşük-risk algoritmalarının kapsamı dışındadır — doğrudan ileri değerlendirme ve ampirik tedavi gerekir.'
+    footerScope: 'Kapsam: iyi görünümlü, term, ≤90 günlük ateşli infant (rektal ateş ≥38,0 °C). Kötü görünümlü veya instabil infantlar bu araçların ve kılavuzların düşük-risk algoritmalarının kapsamı dışındadır — doğrudan ileri değerlendirme ve ampirik tedavi gerekir.',
+    exportPdfBtn: 'Protokolü PDF olarak kaydet',
+    exportHint: 'Girilen değerleri ve sonuçları, zaman damgalı bir test protokolü olarak yazdırma/PDF ekranından kaydeder.',
+    exportNeedsInput: 'PDF kaydı için en az yaş (gün) ve klinik görünüm alanlarını doldurun.',
+    protocolTitle: 'Test Protokolü',
+    protocolNoLabel: 'Protokol No',
+    protocolTimeLabel: 'Tarih / Saat',
+    protocolVersionLabel: 'Araç sürümü',
+    protocolLangLabel: 'Kayıt dili',
+    protocolInputsHeading: 'Girilen hasta bilgileri',
+    protocolResultsHeading: 'Kılavuzlara göre değerlendirme',
+    protocolCombinedHeading: 'Birleşik öneri',
+    protocolFooterNote: 'Bu protokol, yukarıdaki girdilerle bu araç tarafından otomatik olarak üretilmiştir; resmi bir tıbbi kayıt değildir ve yalnızca test/doğrulama amaçlı kullanılmalıdır.',
+    notEntered: '—'
   },
   en: {
     title: 'Febrile Infant Selective LP Calculator',
@@ -225,7 +275,20 @@ const STR = {
     resultsHeading: 'Assessment by guideline',
     footerAuthor: 'Dr. Satuk Buğra Han Bozatlı · Emergency Department, Edirne Sultan 1st Murat State Hospital',
     footerRefs: 'References: Pantell et al. Pediatrics 2021;148(2):e2021052228 (AAP) · Burstein et al. JAMA 2026;335:425–433 (PECARN) · NICE NG143 · Canadian Paediatric Society, 2026 update (CPS) · Gómez et al. Pediatrics 2016;138(2):e20154381 (Step-by-Step) · Turkish Neonatal Society Guideline for Diagnosis and Treatment of Neonatal Infections 2023 (TND)',
-    footerScope: 'Scope: well-appearing, term, febrile infants ≤90 days old (rectal temperature ≥38.0 °C). Ill-appearing or unstable infants fall outside the scope of these tools and the guidelines\' low-risk algorithms — they require immediate further evaluation and empiric treatment.'
+    footerScope: 'Scope: well-appearing, term, febrile infants ≤90 days old (rectal temperature ≥38.0 °C). Ill-appearing or unstable infants fall outside the scope of these tools and the guidelines\' low-risk algorithms — they require immediate further evaluation and empiric treatment.',
+    exportPdfBtn: 'Save protocol as PDF',
+    exportHint: 'Saves the entered values and results as a timestamped test protocol via the print/PDF screen.',
+    exportNeedsInput: 'Fill in at least age (days) and clinical appearance before saving a PDF record.',
+    protocolTitle: 'Test Protocol',
+    protocolNoLabel: 'Protocol No.',
+    protocolTimeLabel: 'Date / Time',
+    protocolVersionLabel: 'Tool version',
+    protocolLangLabel: 'Record language',
+    protocolInputsHeading: 'Patient inputs entered',
+    protocolResultsHeading: 'Assessment by guideline',
+    protocolCombinedHeading: 'Combined recommendation',
+    protocolFooterNote: 'This protocol was generated automatically by this tool from the inputs above; it is not an official medical record and should be used for testing/verification purposes only.',
+    notEntered: '—'
   }
 };
 
@@ -324,6 +387,10 @@ const VERDICT_MSG = {
        en:{big:'AGE OUTSIDE GUIDELINE SCOPE', small:'The entered age falls outside the low-risk algorithms of every guideline in this tool (all apply only through 90 days). Clinical judgment should be applied independently.'} }
 };
 
+// Bump this string with every clinically or functionally meaningful change,
+// so a printed/exported protocol always shows exactly which version produced it.
+const TOOL_VERSION = 'v1.2 (2026-10-14) — TR/EN, sınır değeri (60/90 gün) düzeltmeleri, PDF protokol kaydı';
+
 let lang = 'tr';
 let state = { appearance:null, term:null };
 
@@ -405,6 +472,96 @@ function setBanner(key, colorOverride){
   $('verdict-big').textContent = m.big;
   $('verdict-small').textContent = m.small;
 }
+
+/* ---------------- PDF protocol export ---------------- */
+function nowStamp(){
+  const d = new Date();
+  const p2 = n => String(n).padStart(2,'0');
+  const p3 = n => String(n).padStart(3,'0');
+  const human = `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}.${p3(d.getMilliseconds())}`;
+  const id = `${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}-${p3(d.getMilliseconds())}`;
+  return { human, id };
+}
+
+function fieldOrDash(v){
+  return (v === null || v === undefined || v === '') ? STR[lang].notEntered : v;
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function buildProtocol(){
+  const s = STR[lang];
+  const { human, id } = nowStamp();
+
+  const appearanceTxt = state.appearance==='good' ? s.appearanceGood : state.appearance==='bad' ? s.appearanceBad : s.notEntered;
+  const termTxt = state.term==='yes' ? s.yes : state.term==='no' ? s.noUnknown : s.notEntered;
+  const urineVal = $('urine').value;
+  const urineTxt = urineVal==='neg' ? s.urineNeg : urineVal==='pos' ? s.urinePos : s.urineUnknown;
+
+  const inputRows = [
+    [s.ageLabel, fieldOrDash($('age').value)],
+    [s.appearanceLabel, appearanceTxt],
+    [s.termLabel, termTxt],
+    [s.urineLabel, urineTxt],
+    [s.pctLabel, fieldOrDash($('pct').value)],
+    [s.crpLabel, fieldOrDash($('crp').value)],
+    [s.ancLabel, fieldOrDash($('anc').value)],
+    [s.wbcLabel, fieldOrDash($('wbc').value)],
+    [s.tempLabel, fieldOrDash($('temp').value)],
+  ];
+
+  const resultRows = Array.from($('res-grid').querySelectorAll('.res-card')).map(c => ({
+    name: c.querySelector('.name').textContent,
+    verdict: c.querySelector('.verdict').textContent,
+    why: c.querySelector('.why').textContent
+  }));
+
+  const combinedBig = $('verdict-big').textContent;
+  const combinedSmall = $('verdict-small').textContent;
+  const disclaimerPlain = $('disclaimer').textContent.trim();
+
+  let html = '';
+  html += `<h1>${escapeHtml(s.title)}</h1>`;
+  html += `<div class="pp-meta">`;
+  html += `<div><b>${escapeHtml(s.protocolTitle)}</b></div>`;
+  html += `<div>${escapeHtml(s.protocolNoLabel)}: LP-${id}</div>`;
+  html += `<div>${escapeHtml(s.protocolTimeLabel)}: ${human} (local)</div>`;
+  html += `<div>${escapeHtml(s.protocolVersionLabel)}: ${escapeHtml(TOOL_VERSION)}</div>`;
+  html += `<div>${escapeHtml(s.protocolLangLabel)}: ${lang.toUpperCase()}</div>`;
+  html += `</div>`;
+
+  html += `<h2>${escapeHtml(s.protocolInputsHeading)}</h2>`;
+  html += `<table class="pp-table"><tbody>`;
+  inputRows.forEach(([k,v]) => { html += `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`; });
+  html += `</tbody></table>`;
+
+  html += `<h2>${escapeHtml(s.protocolResultsHeading)}</h2>`;
+  resultRows.forEach(r => {
+    html += `<div class="pp-card"><div class="pp-name">${escapeHtml(r.name)} — <span>${escapeHtml(r.verdict)}</span></div><div class="pp-why">${escapeHtml(r.why)}</div></div>`;
+  });
+
+  html += `<h2>${escapeHtml(s.protocolCombinedHeading)}</h2>`;
+  html += `<div class="pp-combined"><div class="pp-combined-big">${escapeHtml(combinedBig)}</div><div class="pp-combined-small">${escapeHtml(combinedSmall)}</div></div>`;
+
+  html += `<p class="pp-disclaimer">${escapeHtml(disclaimerPlain)}</p>`;
+  html += `<p class="pp-footnote">${escapeHtml(s.protocolFooterNote)}</p>`;
+
+  $('print-protocol').innerHTML = html;
+}
+
+$('export-pdf').addEventListener('click', ()=>{
+  const age = num('age');
+  if (age === null || state.appearance === null) {
+    alert(STR[lang].exportNeedsInput);
+    return;
+  }
+  buildProtocol();
+  window.print();
+});
 
 function compute(){
   const grid = $('res-grid');
