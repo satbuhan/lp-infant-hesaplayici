@@ -22,16 +22,23 @@
 
   var GUIDELINE_KEYS = ['aap', 'pecarn', 'nice', 'cps', 'step', 'tnd'];
 
-  // inputs: { age, appearance:'good'|'bad', urine:'neg'|'pos'|'unknown',
-  //           pct, crp, anc, wbc, temp } — sayısal alanlar null veya sayı.
+  // inputs: { age, appearance:'good'|'bad', term:'yes'|'no'|undefined,
+  //           urine:'neg'|'pos'|'unknown', pct, crp, anc, wbc, temp } —
+  //           sayısal alanlar null veya sayı.
   //
-  // NOT: "term" (term/önceden sağlıklı) alanı arayüzde toplanıp PDF/CSV
-  // kayıtlarında görüntülenir, ancak hiçbir kılavuzun algoritmasında karar
-  // değişkeni olarak KULLANILMAZ — araç, kapsamını zaten "term, önceden
-  // sağlıklı" infantlarla sınırlı tanımlar (bkz. footerScope metni), bu
-  // yüzden bu alan bir dahil etme/dışlama ön koşulu olarak değil, yalnızca
-  // kayıt amaçlı bir bilgi alanı olarak tasarlanmıştır. Parametre taraması
-  // bu nedenle "term" eksenini atlar (her değeri için sonuç özdeş olur).
+  // NOT: "term" (term/önceden sağlıklı mı?) alanı, HİÇBİR kılavuzun kendi
+  // algoritmasında bir dallanma/karar değişkeni olarak KULLANILMAZ — AAP,
+  // PECARN, NICE NG143, CPS ve Step-by-Step'in tümü, türetme ve doğrulama
+  // kohortlarını zaten yalnızca term + önceden sağlıklı infantlarla
+  // sınırlamıştır (preterm veya kronik hastalığı olan infant bu
+  // çalışmaların hiçbirine dahil edilmemiştir). Yani "term" bu kılavuzlarda
+  // bir KARAR DEĞİŞKENİ değil, bir GİRİŞ KRİTERİDİR (eligibility) — kurala
+  // hiç girilip girilemeyeceğini belirler, kuralın içinde ayrı bir dal
+  // üretmez. Bu nedenle term='no' (hayır/bilinmiyor) seçildiğinde, aşağıda
+  // TÜM 6 kılavuz tek bir kapsam-dışı kapısıyla (gate) bloke edilir — hiçbir
+  // kılavuza özel, kanıtsız bir "preterm dalı" İCAT EDİLMEZ. Parametre
+  // taraması (sweep.js) bu eksende hep term='yes' varsayımıyla çalışır
+  // (appearance gibi, ayrı bir doğrulama testiyle ele alınır).
   function evaluateGuidelines(inputs) {
     var age = inputs.age, appearance = inputs.appearance, urine = inputs.urine,
         pct = inputs.pct, crp = inputs.crp, anc = inputs.anc, wbc = inputs.wbc, temp = inputs.temp;
@@ -40,6 +47,11 @@
     if (appearance === 'bad') {
       GUIDELINE_KEYS.forEach(function (k) { byKey[k] = { cls: 'red', msgKey: 'bad', oos: false }; });
       return { byKey: byKey, banner: 'bad' };
+    }
+
+    if (inputs.term === 'no') {
+      GUIDELINE_KEYS.forEach(function (k) { byKey[k] = { cls: 'gray', msgKey: 'term_oos', oos: true }; });
+      return { byKey: byKey, banner: 'term_oos' };
     }
 
     // ---- AAP 2021 ----

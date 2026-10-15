@@ -375,7 +375,10 @@ const MSG = {
                      en:{verdict:'Out of scope', why:'Step-by-Step covers infants ≤90 days of age.'} },
 
   tnd_general: { tr:{verdict:'Genel çerçeve (yaşa özgü eşik yok)', why:'Önce klinik görünüm, sonra yaşa uygun kılavuz + laboratuvar değerlendirmesi. 29–90 gün için doğrulanmış, bağımsız bir düşük risk kuralı değildir.'},
-                 en:{verdict:'General framework (no age-specific thresholds)', why:'Assess clinical appearance first, then apply age-appropriate guideline plus laboratory evaluation. It is not a validated, independent low-risk rule for the 29–90 day range.'} }
+                 en:{verdict:'General framework (no age-specific thresholds)', why:'Assess clinical appearance first, then apply age-appropriate guideline plus laboratory evaluation. It is not a validated, independent low-risk rule for the 29–90 day range.'} },
+
+  term_oos: { tr:{verdict:'Kapsam dışı', why:'Bu kılavuz yalnızca term ve önceden sağlıklı infant kohortlarında türetilip doğrulanmıştır; preterm, kronik hastalığı olan veya bu bilginin bilinmediği infantlarda geçerliliği yoktur.'},
+              en:{verdict:'Out of scope', why:'This guideline was derived and validated only in term, previously healthy infant cohorts; it does not apply to preterm infants, those with chronic illness, or when this status is unknown.'} }
 };
 
 const VERDICT_MSG = {
@@ -392,12 +395,14 @@ const VERDICT_MSG = {
   green: { tr:{big:'BİRLEŞİK ÖNERİ: RUTİN LP GEREKMEZ', small:"İyi görünümlü bu infant için girilen veriler, kılavuzların düşük risk eşiklerini karşılıyor. Ateş tek başına LP zorunluluğu yaratmaz — risk temelli, seçici yaklaşım ve güvenilir izlem yeterli olabilir."},
           en:{big:'COMBINED RECOMMENDATION: ROUTINE LP NOT REQUIRED', small:'For this well-appearing infant, the entered data meets the guidelines\' low-risk thresholds. Fever alone does not mandate LP — a risk-based, selective approach with reliable follow-up may be sufficient.'} },
   oos: { tr:{big:'YAŞ ARALIĞI KAPSAM DIŞI', small:'Girilen yaş, bu araçta yer alan kılavuzların hiçbirinin düşük-risk algoritması kapsamında değil (hepsi ≤90 gün için geçerlidir). Klinik değerlendirme bağımsız olarak yapılmalıdır.'},
-       en:{big:'AGE OUTSIDE GUIDELINE SCOPE', small:'The entered age falls outside the low-risk algorithms of every guideline in this tool (all apply only through 90 days). Clinical judgment should be applied independently.'} }
+       en:{big:'AGE OUTSIDE GUIDELINE SCOPE', small:'The entered age falls outside the low-risk algorithms of every guideline in this tool (all apply only through 90 days). Clinical judgment should be applied independently.'} },
+  term_oos: { tr:{big:'KAPSAM DIŞI — TERM/ÖNCEDEN SAĞLIKLI DEĞİL VEYA BİLİNMİYOR', small:'Bu araçtaki 6 kılavuzun tamamı, türetme ve doğrulama çalışmalarında yalnızca term (≥37 hafta) ve önceden sağlıklı infantları kapsamıştır. Preterm, kronik hastalığı olan veya bu bilginin bilinmediği infantlarda hiçbiri doğrulanmamıştır — düşük-risk algoritmaları burada uygulanamaz, klinik değerlendirme bağımsız olarak yapılmalıdır.'},
+            en:{big:'OUTSIDE SCOPE — NOT TERM/PREVIOUSLY HEALTHY, OR UNKNOWN', small:'All 6 guidelines in this tool were derived and validated only in term (≥37 weeks) infants with no prior health problems. None has been validated in preterm infants, infants with chronic illness, or when this status is unknown — the low-risk algorithms do not apply here; clinical judgment should be applied independently.'} }
 };
 
 // Bump this string with every clinically or functionally meaningful change,
 // so a printed/exported protocol always shows exactly which version produced it.
-const TOOL_VERSION = 'v1.3 (2026-10-14) — TR/EN, sınır değeri (60/90 gün) düzeltmeleri, PDF protokol kaydı, yerel test geçmişi + Excel (.csv) dışa aktarım';
+const TOOL_VERSION = 'v1.4 (2026-10-15) — TR/EN, sınır değeri (60/90 gün) düzeltmeleri, PDF protokol kaydı, yerel test geçmişi + Excel (.csv) dışa aktarım, term/önceden sağlıklı kapsam kapısı';
 
 let lang = 'tr';
 let state = { appearance:null, term:null };
@@ -477,7 +482,7 @@ function cardM(container, cls, nameKey, msgKey, oos){
 
 function setBanner(key, colorOverride){
   const m = VERDICT_MSG[key][lang];
-  const colors = { initial:'#1F6F5C', bad:'#7a1620', red:'#B23A48', yellow:'#8a6d1f', missing:'#405C80', green:'#1F6F5C', oos:'#505563' };
+  const colors = { initial:'#1F6F5C', bad:'#7a1620', red:'#B23A48', yellow:'#8a6d1f', missing:'#405C80', green:'#1F6F5C', oos:'#505563', term_oos:'#505563' };
   $('verdict-banner').style.background = colorOverride || colors[key];
   $('verdict-big').textContent = m.big;
   $('verdict-small').textContent = m.small;
@@ -704,7 +709,7 @@ function compute(){
     return;
   }
 
-  const result = LPLogic.evaluateGuidelines({ age, appearance: state.appearance, urine, pct, crp, anc, wbc, temp });
+  const result = LPLogic.evaluateGuidelines({ age, appearance: state.appearance, term: state.term, urine, pct, crp, anc, wbc, temp });
 
   LPLogic.GUIDELINE_KEYS.forEach(k=>{
     const r = result.byKey[k];
